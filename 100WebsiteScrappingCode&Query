@@ -151,6 +151,7 @@ CREATE TABLE website_data (
     payment_gateways TEXT,
     website_language VARCHAR(10),
     category VARCHAR(50),
-    who
+    whois_info TEXT
+);
 
 

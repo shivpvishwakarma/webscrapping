@@ -1,0 +1,156 @@
+import pymysql
+import requests
+from bs4 import BeautifulSoup
+import whois
+from datetime import datetime
+
+urls = [
+    "https://www.openstreetmap.org/", "https://developer.twitter.com/en/docs", "https://developers.facebook.com/",
+    "https://developers.google.com/maps", "https://www.mediawiki.org/wiki/API:Main_page", "https://www.reddit.com/dev/api/",
+    "https://www.flickr.com/services/api/", "https://www.yelp.com/developers/documentation/v3", "https://api.stackexchange.com/",
+    "https://developer.github.com/v3/", "https://developer.linkedin.com/docs/rest-api", "https://www.instagram.com/developer/",
+    "https://developers.google.com/youtube/v3", "https://www.tumblr.com/docs/en/api/v2", "https://dev.twitch.tv/docs",
+    "https://www.eventbrite.com/developer/v3/", "https://developers.pinterest.com/docs/getting-started/introduction/",
+    "https://developer.spotify.com/documentation/web-api/", "https://developer.nytimes.com/apis",
+    "https://weather.com/swagger-docs/ui/sun/v3/sunV3Alerts.json", "https://imdb-api.com/", "https://data.worldbank.org/",
+    "http://data.un.org/", "https://www.census.gov/data/developers/data-sets.html", "https://www.data.gov/", "https://data.nasa.gov/",
+    "https://data.cdc.gov/", "https://open.fda.gov/", "https://openweathermap.org/api", "https://www.who.int/data/gho/info/gho-odata-api",
+    "https://data.unicef.org/", "https://ec.europa.eu/eurostat/data/database", "https://data.europa.eu/euodp/en/data/",
+    "https://ukdataservice.ac.uk/", "https://open.canada.ca/en/open-data", "https://data.gov.au/", "https://data.oecd.org/",
+    "https://developers.google.com/books", "https://developer.spotify.com/documentation/web-api/", "https://developer.foursquare.com/",
+    "https://www.kaggle.com/datasets", "https://data.gov.uk/", "https://public.enigma.com/", "https://data.fivethirtyeight.com/",
+    "https://www.google.com/finance", "https://www.quandl.com/", "https://www.usgs.gov/products/data-and-tools",
+    "https://www.opendatanetwork.com/", "https://docs.gitlab.com/ee/api/", "https://earthdata.nasa.gov/",
+    "https://openlibrary.org/developers/api", "https://pubchem.ncbi.nlm.nih.gov/", "https://www.nlm.nih.gov/databases/download.html",
+    "https://developers.google.com/freebase/", "https://dp.la/", "https://opencorporates.com/", "https://www.noaa.gov/data",
+    "https://datahub.io/", "https://www.opendatasoft.com/", "https://okfn.org/", "https://www.pewresearch.org/",
+    "https://fred.stlouisfed.org/", "https://www.metoffice.gov.uk/services/data/datapoint", "https://www.pewinternet.org/",
+    "https://www.freecodecamp.org/news/learn-data-science-with-free-public-data-sets-9fbb8f2e7257/", "https://www.propublica.org/datastore/",
+    "https://datasf.org/opendata/", "https://data.sfgov.org/", "https://opendata.cityofnewyork.us/", "https://data.lacity.org/",
+    "https://data.boston.gov/", "https://data.cityofchicago.org/", "https://open.toronto.ca/", "https://www.eea.europa.eu/data-and-maps/data",
+    "https://opentrials.net/", "https://www.transparency.org/en/our-priorities/data-initiatives", "https://world.openfoodfacts.org/data",
+    "https://www.opensecrets.org/", "https://data.crunchbase.com/", "https://openstreetcam.org/", "https://www.dataportals.org/",
+    "http://insideairbnb.com/get-the-data.html", "https://www.openstates.org/", "http://opendatainception.io/",
+    "https://www.reddit.com/r/datasets/", "https://data.worldbank.org/", "https://datasetsearch.research.google.com/",
+    "https://github.com/awesomedata/awesome-public-datasets", "https://opendatakit.org/", "https://bigml.com/gallery/datasets",
+    "https://registry.opendata.aws/", "https://vincentarelbundock.github.io/Rdatasets/datasets.html", "https://www.yahoofinanceapi.com/",
+    "https://www.quandl.com/", "https://data.world/", "http://opendataimpactmap.org/", "https://datacatalog.worldbank.org/",
+    "https://knoema.com/", "https://www.transportation.gov/data", "https://www.epa.gov/open"
+]
+
+# Function to extract data from a URL
+def scrape_url(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Extract meta title
+        title_tag = soup.find('title')
+        meta_title = title_tag.get_text() if title_tag else None
+
+        # Extract meta description
+        description_tag = soup.find('meta', attrs={'name': 'description'})
+        meta_description = description_tag['content'] if description_tag and 'content' in description_tag.attrs else None
+
+        # Extract social media links
+        social_media_domains = ['facebook.com', 'twitter.com', 'linkedin.com', 'instagram.com']
+        social_media_links = [a_tag['href'] for a_tag in soup.find_all('a', href=True) if any(domain in a_tag['href'] for domain in social_media_domains)]
+
+        # Detect tech stack
+        tech_stack = []
+        html_content = str(soup)
+        if 'wp-content' in html_content or 'WordPress' in html_content:
+            tech_stack.append('WordPress')
+        if 'shopify' in html_content:
+            tech_stack.append('Shopify')
+        if 'drupal' in html_content:
+            tech_stack.append('Drupal')
+        if 'react' in html_content:
+            tech_stack.append('React')
+        if 'vue' in html_content:
+            tech_stack.append('Vue.js')
+        if 'angular' in html_content:
+            tech_stack.append('Angular')
+
+        # Detect payment gateways
+        payment_gateways = ['paypal', 'stripe', 'razorpay']
+        detected_gateways = [gateway for gateway in payment_gateways if gateway in html_content]
+
+        # Extract website language
+        html_tag = soup.find('html')
+        website_language = html_tag['lang'] if html_tag and 'lang' in html_tag.attrs else None
+
+        # Categorize website
+        category = 'unknown'
+        categories_dict = {
+            'developer': ['developer', 'api', 'tech'],
+            'data': ['data', 'dataset', 'statistics'],
+            'government': ['gov', 'official'],
+            'news': ['news', 'media']
+        }
+        for cat, keywords in categories_dict.items():
+            if any(keyword in url for keyword in keywords):
+                category = cat
+                break
+
+        # Fetch WHOIS info
+        try:
+            domain_info = whois.whois(url)
+            whois_info = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in domain_info.items()} if domain_info else None
+        except Exception as e:
+            print(f"Error fetching WHOIS info for {url}: {e}")
+            whois_info = None
+
+        return (url, meta_title, meta_description, str(social_media_links), str(tech_stack), str(detected_gateways), website_language, category, str(whois_info))
+
+    except requests.RequestException as e:
+        print(f"Error fetching {url}: {e}")
+        return (url, None, None, '[]', '[]', '[]', None, 'unknown', None)
+
+# Database connection
+def connect_db():
+    return pymysql.connect(
+        user='root',
+        password='Papa9415@',
+        host='localhost',
+        database='website_info'
+    )
+
+# Function to insert data into database
+def insert_data(db, data):
+    cursor = db.cursor()
+    sql = ("INSERT INTO website_data "
+           "(url, meta_title, meta_description, social_media_links, tech_stack, payment_gateways, website_language, category, whois_info) "
+           "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)")
+    cursor.execute(sql, data)
+    db.commit()
+    cursor.close()
+
+# Main function
+def main():
+    db = connect_db()
+    for url in urls:
+        print(f"Scraping {url}...")
+        data = scrape_url(url)
+
+
+# Query for MySQL Database
+
+CREATE DATABASE website_info;
+
+USE website_info;
+
+CREATE TABLE website_data (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    url VARCHAR(255) NOT NULL,
+    meta_title TEXT,
+    meta_description TEXT,
+    social_media_links TEXT,
+    tech_stack TEXT,
+    payment_gateways TEXT,
+    website_language VARCHAR(10),
+    category VARCHAR(50),
+    who
+
+
